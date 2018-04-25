@@ -1,0 +1,108 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using SGBank.Models.Interfaces;
+using SGBank.Models.Responses;
+using SGBank.Models;
+using SGBank.BLL.DepositRules;
+using SGBank.BLL;
+using SGBank.BLL.WithdrawRules;
+using SGBank;
+
+namespace SGBank.BLL
+{
+   public class AccountManager
+    {
+        private IAccountRepository _accountRepository;
+
+        public AccountManager(IAccountRepository accountRepository)
+        {
+            _accountRepository = accountRepository;
+        }
+
+        public AccountLookUpResponse LookupAccount(string accountNumber)
+        {
+            AccountLookUpResponse response = new AccountLookUpResponse();
+
+            response.Account = _accountRepository.LoadAccount(accountNumber);
+
+            if(response.Account == null)
+            {
+                response.Success = false;
+                response.Message = $"{accountNumber} is not a valid account.";
+
+            }
+            else
+            {
+                response.Success = true;
+            }
+
+            return response;
+        }
+
+        public AccountDepositResponse Deposit(string accountNumber, decimal amount)
+        {
+            AccountDepositResponse response = new AccountDepositResponse();
+           
+                response.Account = _accountRepository.LoadAccount(accountNumber);
+
+
+
+            if (response.Account == null)
+            {
+                response.Success = false;
+                response.Message = $"{accountNumber} is not a valid account.";
+
+            }
+            else
+            {
+                response.Success = true;
+
+
+                IDeposit depositRule = DepositRulesFactory.Create(response.Account.Type);
+                response = depositRule.Deposit(response.Account, amount);
+
+                if (response.Success)
+                {
+                    _accountRepository.SaveAccount(response.Account);
+                }
+
+            }
+
+
+                return response;
+            
+           
+        }
+
+        public AccountWithdrawResponse Withdraw(string accountNumber, decimal amount)
+        {
+            AccountWithdrawResponse response = new AccountWithdrawResponse();
+
+            response.Account = _accountRepository.LoadAccount(accountNumber);
+
+            if(response.Account == null)
+            {
+                response.Success = false;
+                response.Message= $"{accountNumber}is an invalid account number";
+            }
+            else
+            {
+                response.Success = true;
+            }
+           
+
+            if (response.Success)
+            {
+                IWithdraw WithdrawRule = WithdrawRulesFactory.Create(response.Account.Type);
+                response = WithdrawRule.Withdraw(response.Account, amount);
+                _accountRepository.SaveAccount(response.Account);
+            }
+            return response;
+        }
+
+
+    }
+}
